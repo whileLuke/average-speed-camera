@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>HUD Speed Tracker</title>
+<style>
+html,body{
+  margin:0;padding:0;height:100%;background:#000;color:#fff;font-family:Inter,system-ui;
+  -webkit-font-smoothing:antialiased;
+  overflow:auto;
+}
+.hud{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  text-align:center;
+  pointer-events:none;
+}
+.gauge{
+  width:120px;height:120px;margin:12px;
+}
+.group{display:flex;flex-direction:column;align-items:center;margin:24px 0;}
+.value{font-size:24px;font-weight:800;margin-top:-48px;}
+.label{font-size:14px;color:#7f8ea3;}
+input, button{
+  z-index:9999;
+  pointer-events:auto;
+  font-size:16px;
+  margin-bottom:4px;
+}
+.running-indicator{
+  width:16px;height:16px;border-radius:50%;margin-top:8px;
+  background:red;
+  animation: pulse 1s infinite;
+  display:none;
+}
+@keyframes pulse {
+  0% {opacity:0.3;}
+  50% {opacity:1;}
+  100% {opacity:0.3;}
+}
+</style>
+</head>
+<body>
+<input id="latB" type="number" placeholder="Destination Lat" style="width:120px;" />
+<input id="lonB" type="number" placeholder="Destination Lon" style="width:120px;" />
+<input id="limit" type="number" placeholder="Speed Limit km/h" />
+<button id="startBtn">Start Trip</button>
+<div class="hud">
+  <div class="group">
+    <svg id="curGauge" class="gauge"></svg>
+    <div class="value" id="cur">0</div>
+    <div class="label">Current Speed</div>
+  </div>
+  <div class="group">
+    <svg id="avgGauge" class="gauge"></svg>
+    <div class="value" id="avg">0</div>
+    <div class="label">Average So Far</div>
+  </div>
+  <div class="group">
+    <svg id="reqGauge" class="gauge"></svg>
+    <div class="value" id="req">0</div>
+    <div class="label">Required Average</div>
+  </div>
+  <div class="group">
+    <div class="value" id="distB">—</div>
+    <div class="label">Distance to Destination (km)</div>
+  </div>
+  <div class="running-indicator" id="indicator"></div>
+</div>
+<script>
+function toRad(d){return d*Math.PI/180;}
+function dist(a,b,c,d){const R=6371;const dL=toRad(c-a),dLo=toRad(d-b);const h=Math.sin(dL/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLo/2)**2;return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+
+let last=null,startTime=null,startPos=null,Bpos=null,watchId=null;
+const curEl=document.getElementById('cur'),avgEl=document.getElementById('avg'),reqEl=document.getElementById('req'),distBEl=document.getElementById('distB');
+const limitEl=document.getElementById('limit');
+const latBEl=document.getElementById('latB'),lonBEl=document.getElementById('lonB');
+const startBtn=document.getElementById('startBtn');
+const indicator=document.getElementById('indicator');
+
+function createGauge(svg){
+  const size=120, stroke=12, r=(size-stroke)/2, startAng=Math.PI*0.75, endAng=Math.PI*0.25+Math.PI*2;
+  const ns='http://www.w3.org/2000/svg';
+  const pathBg=document.createElementNS(ns,'path');
+  const pathFg=document.createElementNS(ns,'path');
+  const text=document.createElementNS(ns,'text');
+  svg.setAttribute('viewBox',`0 0 ${size} ${size}`);
+  pathBg.setAttribute('stroke','rgba(255,255,255,0.1)'); pathBg.setAttribute('fill','none'); pathBg.setAttribute('stroke-width',stroke);
+  pathFg.setAttribute('fill','none'); pathFg.setAttribute('stroke-linecap','round'); pathFg.setAttribute('stroke-width',stroke-2);
+  text.setAttribute('x','50%'); text.setAttribute('y','55%'); text.setAttribute('dominant-baseline','middle'); text.setAttribute('text-anchor','middle'); text.setAttribute('font-size','16'); text.textContent='0';
+  svg.appendChild(pathBg); svg.appendChild(pathFg); svg.appendChild(text);
+  function arcPath(a1,a2){const x1=size/2+r*Math.cos(a1),y1=size/2+r*Math.sin(a1),x2=size/2+r*Math.cos(a2),y2=size/2+r*Math.sin(a2);return `M ${x1} ${y1} A ${r} ${r} 0 ${a2-a1>Math.PI?1:0} 1 ${x2} ${y2}`;}
+  pathBg.setAttribute('d',arcPath(startAng,endAng));
+  return {
+    set(value,max=200){
+      const pct=Math.max(0,Math.min(value,max))/max;
+      const ang=startAng + pct*(endAng-startAng);
+      pathFg.setAttribute('d',arcPath(startAng,ang));
+      let col='#10b981'; if(pct>0.6) col='#f59e0b'; if(pct>0.9) col='#ef4444'; pathFg.setAttribute('stroke',col);
+      text.textContent=Math.round(value);
+    }
+  };
+}
+
+const curG=createGauge(document.getElementById('curGauge')),
+avgG=createGauge(document.getElementById('avgGauge')),
+reqG=createGauge(document.getElementById('reqGauge'));
+
+startBtn.onclick=()=>{
+  const latB=parseFloat(latBEl.value), lonB=parseFloat(lonBEl.value);
+  if(isNaN(latB)||isNaN(lonB)){ alert('Please enter valid destination coordinates.'); return; }
+  Bpos={lat:latB,lon:lonB};
+  indicator.style.display='block';
+
+  if(navigator.geolocation){
+    if(watchId) navigator.geolocation.clearWatch(watchId);
+    watchId=navigator.geolocation.watchPosition(p=>{
+      const {latitude:lat,longitude:lon}=p.coords, now=Date.now();
+      if(!startPos){startPos={lat,lon}; startTime=now; last={lat,lon,ts:now}; return;}
+      const km=dist(last.lat,last.lon,lat,lon), sec=(now-last.ts)/1000, speed=sec>0?km/(sec/3600):0;
+      const elapsedH=(now-startTime)/3600000, distFromStart=dist(startPos.lat,startPos.lon,lat,lon), avg=elapsedH>0?distFromStart/elapsedH:0;
+      const limit=parseFloat(limitEl.value)||0;
+      let req=0;
+      if(Bpos){
+        const distToB=dist(lat,lon,Bpos.lat,Bpos.lon);
+        distBEl.textContent=distToB.toFixed(2);
+        const totalDist=dist(startPos.lat,startPos.lon,Bpos.lat,Bpos.lon);
+        if(limit>0&&totalDist>0){
+          const totalTimeAllowed=totalDist/limit, remainingH=totalTimeAllowed-elapsedH;
+          req=remainingH>0?distToB/remainingH:0;
+          if(req>limit) req=limit;
+        }
+      }
+      curEl.textContent=Math.round(speed); curG.set(speed,200);
+      avgEl.textContent=Math.round(avg); avgG.set(avg,200);
+      reqEl.textContent=req?Math.round(req):0; reqG.set(req||0,200);
+      last={lat,lon,ts:now};
+    },err=>console.log(err),{enableHighAccuracy:true});
+  } else { alert('Geolocation not supported'); }
+}
+</script>
+</body>
+</html>
