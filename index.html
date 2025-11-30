@@ -3,49 +3,48 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>HUD Speed Tracker</title>
+<title>HUD Speed Tracker — Improved</title>
 <style>
 html,body{
   margin:0;padding:0;height:100%;background:#000;color:#fff;font-family:Inter,system-ui;
-  -webkit-font-smoothing:antialiased;
-  overflow:auto;
+  -webkit-font-smoothing:antialiased;overflow:auto;
 }
+.controls{position:relative;z-index:9999;padding:12px;display:flex;gap:8px;flex-wrap:wrap;}
 .hud{
   position:fixed;top:0;left:0;right:0;bottom:0;
   display:flex;flex-direction:column;justify-content:center;align-items:center;
-  text-align:center;
-  pointer-events:none;
+  text-align:center;pointer-events:none;
 }
-.gauge{
-  width:120px;height:120px;margin:12px;
-}
-.group{display:flex;flex-direction:column;align-items:center;margin:24px 0;}
+.gauge{width:120px;height:120px;margin:12px;}
+.group{display:flex;flex-direction:column;align-items:center;margin:18px 0;}
 .value{font-size:24px;font-weight:800;margin-top:-48px;}
 .label{font-size:14px;color:#7f8ea3;}
-input, button{
-  z-index:9999;
-  pointer-events:auto;
-  font-size:16px;
-  margin-bottom:4px;
+input, button, select{
+  z-index:9999;pointer-events:auto;font-size:14px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:#0b1220;color:#fff;
 }
-.running-indicator{
-  width:16px;height:16px;border-radius:50%;margin-top:8px;
-  background:red;
-  animation: pulse 1s infinite;
-  display:none;
-}
-@keyframes pulse {
-  0% {opacity:0.3;}
-  50% {opacity:1;}
-  100% {opacity:0.3;}
-}
+.running-indicator{width:14px;height:14px;border-radius:50%;margin-top:8px;background:red;animation:pulse 1s infinite;display:none;}
+@keyframes pulse {0%{opacity:0.3;}50%{opacity:1;}100%{opacity:0.3;}}
+.small{font-size:12px;padding:6px;}
+.row{display:flex;gap:8px;align-items:center;}
+.status{font-size:12px;color:#7f8ea3;margin-left:6px;}
+.footer{position:fixed;bottom:6px;left:6px;color:#7f8ea3;font-size:12px;pointer-events:none;}
 </style>
 </head>
 <body>
-<input id="latB" type="number" placeholder="Destination Lat" style="width:120px;" />
-<input id="lonB" type="number" placeholder="Destination Lon" style="width:120px;" />
-<input id="limit" type="number" placeholder="Speed Limit km/h" />
-<button id="startBtn">Start Trip</button>
+
+<div class="controls">
+  <input id="latB" type="number" placeholder="Dest Lat" step="any" style="width:120px;" />
+  <input id="lonB" type="number" placeholder="Dest Lon" step="any" style="width:120px;" />
+  <input id="limit" type="number" placeholder="Speed Limit km/h" style="width:120px;" />
+  <button id="markStart" class="small">Mark Start</button>
+  <button id="markEnd" class="small">Mark End</button>
+  <button id="startBtn" class="small">Start Trip</button>
+  <button id="stopBtn" class="small">Stop</button>
+  <button id="exportBtn" class="small">Export CSV</button>
+  <label style="display:flex;align-items:center;gap:6px;"><input id="autoToggle" type="checkbox" /> Auto start/end</label>
+  <label style="display:flex;align-items:center;gap:6px;"><input id="useCoordsSpeed" type="checkbox" checked /> Use GPS speed</label>
+</div>
+
 <div class="hud">
   <div class="group">
     <svg id="curGauge" class="gauge"></svg>
@@ -67,18 +66,22 @@ input, button{
     <div class="label">Distance to Destination (km)</div>
   </div>
   <div class="running-indicator" id="indicator"></div>
+  <div class="status" id="statusText" style="margin-top:8px;pointer-events:none;"></div>
 </div>
+
+<div class="footer">Improved: route-distance + smoothing + GPS filtering</div>
+
 <script>
+/* ---------- Utilities ---------- */
 function toRad(d){return d*Math.PI/180;}
-function dist(a,b,c,d){const R=6371;const dL=toRad(c-a),dLo=toRad(d-b);const h=Math.sin(dL/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLo/2)**2;return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6371; // km
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
-let last=null,startTime=null,startPos=null,Bpos=null,watchId=null;
-const curEl=document.getElementById('cur'),avgEl=document.getElementById('avg'),reqEl=document.getElementById('req'),distBEl=document.getElementById('distB');
-const limitEl=document.getElementById('limit');
-const latBEl=document.getElementById('latB'),lonBEl=document.getElementById('lonB');
-const startBtn=document.getElementById('startBtn');
-const indicator=document.getElementById('indicator');
-
+/* ---------- Compact gauge factory ---------- */
 function createGauge(svg){
   const size=120, stroke=12, r=(size-stroke)/2, startAng=Math.PI*0.75, endAng=Math.PI*0.25+Math.PI*2;
   const ns='http://www.w3.org/2000/svg';
@@ -86,7 +89,7 @@ function createGauge(svg){
   const pathFg=document.createElementNS(ns,'path');
   const text=document.createElementNS(ns,'text');
   svg.setAttribute('viewBox',`0 0 ${size} ${size}`);
-  pathBg.setAttribute('stroke','rgba(255,255,255,0.1)'); pathBg.setAttribute('fill','none'); pathBg.setAttribute('stroke-width',stroke);
+  pathBg.setAttribute('stroke','rgba(255,255,255,0.08)'); pathBg.setAttribute('fill','none'); pathBg.setAttribute('stroke-width',stroke);
   pathFg.setAttribute('fill','none'); pathFg.setAttribute('stroke-linecap','round'); pathFg.setAttribute('stroke-width',stroke-2);
   text.setAttribute('x','50%'); text.setAttribute('y','55%'); text.setAttribute('dominant-baseline','middle'); text.setAttribute('text-anchor','middle'); text.setAttribute('font-size','16'); text.textContent='0';
   svg.appendChild(pathBg); svg.appendChild(pathFg); svg.appendChild(text);
@@ -103,42 +106,350 @@ function createGauge(svg){
   };
 }
 
-const curG=createGauge(document.getElementById('curGauge')),
-avgG=createGauge(document.getElementById('avgGauge')),
-reqG=createGauge(document.getElementById('reqGauge'));
+/* ---------- Elements ---------- */
+const curEl=document.getElementById('cur'), avgEl=document.getElementById('avg'), reqEl=document.getElementById('req'), distBEl=document.getElementById('distB');
+const limitEl=document.getElementById('limit');
+const latBEl=document.getElementById('latB'), lonBEl=document.getElementById('lonB');
+const startBtn=document.getElementById('startBtn'), stopBtn=document.getElementById('stopBtn');
+const markStart=document.getElementById('markStart'), markEnd=document.getElementById('markEnd');
+const autoToggle=document.getElementById('autoToggle'), indicator=document.getElementById('indicator');
+const exportBtn=document.getElementById('exportBtn'), statusText=document.getElementById('statusText');
+const useCoordsSpeed = document.getElementById('useCoordsSpeed');
 
-startBtn.onclick=()=>{
-  const latB=parseFloat(latBEl.value), lonB=parseFloat(lonBEl.value);
-  if(isNaN(latB)||isNaN(lonB)){ alert('Please enter valid destination coordinates.'); return; }
-  Bpos={lat:latB,lon:lonB};
-  indicator.style.display='block';
+/* ---------- Gauges ---------- */
+const curG=createGauge(document.getElementById('curGauge')), avgG=createGauge(document.getElementById('avgGauge')), reqG=createGauge(document.getElementById('reqGauge'));
 
-  if(navigator.geolocation){
-    if(watchId) navigator.geolocation.clearWatch(watchId);
-    watchId=navigator.geolocation.watchPosition(p=>{
-      const {latitude:lat,longitude:lon}=p.coords, now=Date.now();
-      if(!startPos){startPos={lat,lon}; startTime=now; last={lat,lon,ts:now}; return;}
-      const km=dist(last.lat,last.lon,lat,lon), sec=(now-last.ts)/1000, speed=sec>0?km/(sec/3600):0;
-      const elapsedH=(now-startTime)/3600000, distFromStart=dist(startPos.lat,startPos.lon,lat,lon), avg=elapsedH>0?distFromStart/elapsedH:0;
-      const limit=parseFloat(limitEl.value)||0;
-      let req=0;
-      if(Bpos){
-        const distToB=dist(lat,lon,Bpos.lat,Bpos.lon);
-        distBEl.textContent=distToB.toFixed(2);
-        const totalDist=dist(startPos.lat,startPos.lon,Bpos.lat,Bpos.lon);
-        if(limit>0&&totalDist>0){
-          const totalTimeAllowed=totalDist/limit, remainingH=totalTimeAllowed-elapsedH;
-          req=remainingH>0?distToB/remainingH:0;
-          if(req>limit) req=limit;
-        }
-      }
-      curEl.textContent=Math.round(speed); curG.set(speed,200);
-      avgEl.textContent=Math.round(avg); avgG.set(avg,200);
-      reqEl.textContent=req?Math.round(req):0; reqG.set(req||0,200);
-      last={lat,lon,ts:now};
-    },err=>console.log(err),{enableHighAccuracy:true});
-  } else { alert('Geolocation not supported'); }
+/* ---------- State ---------- */
+let watchId = null;
+let wakelock = null;
+
+let tripRunning=false;
+let startMarker = null; // {lat,lon,ts}
+let endMarker = null;   // {lat,lon,ts}
+let lastPos = null;     // {lat,lon,ts}
+let traveled = 0;       // km — sum of accepted segments since start
+let startTime = null;
+let speedEMA = null;    // km/h — smoothed current speed
+const alpha = 0.35;     // smoothing factor for EMA (0..1)
+let logs = [];          // array of {ts,lat,lon,speed,smoothed,accuracy,traveled}
+
+/* thresholds (tweakable) */
+const MAX_ACCEPT_ACCURACY = 30; // meters — reject points that have accuracy worse than this
+const MIN_TIME_DIFF_MS = 400;   // ignore extremely frequent updates
+const MAX_SPEED_JUMP_KMH = 60;  // clamp unrealistic per-segment speed
+const AUTO_MARK_RADIUS_M = 30;  // radius (meters) to auto-trigger start/end if enabled
+
+/* ---------- Helpers ---------- */
+function setStatus(t){ statusText.textContent = t; }
+function enableWakeLock(){
+  if('wakeLock' in navigator && !wakelock){
+    navigator.wakeLock.request('screen').then(lock => { wakelock = lock; lock.addEventListener('release', ()=> wakelock = null); }).catch(()=>{/*fail silently*/});
+  }
 }
+function releaseWakeLock(){
+  if(wakelock){ wakelock.release().then(()=>wakelock=null).catch(()=>{}); }
+}
+function resetTripState(){
+  tripRunning=false; startTime=null; lastPos=null; traveled=0; speedEMA=null; logs=[]; indicator.style.display='none';
+  curEl.textContent='0'; avgEl.textContent='0'; reqEl.textContent='0'; distBEl.textContent='—';
+  curG.set(0); avgG.set(0); reqG.set(0);
+  setStatus('Stopped');
+}
+
+/* compute average speed from start: traveled km / elapsed hours */
+function computeAverage(){
+  if(!startTime) return 0;
+  const elapsedH = (Date.now() - startTime)/3600000;
+  return elapsedH>0 ? (traveled / elapsedH) : 0;
+}
+
+/* determine remaining distance to B (prefers road distance estimate) */
+function remainingDistanceToB(curLat, curLon){
+  const latB=parseFloat(latBEl.value), lonB=parseFloat(lonBEl.value);
+  if(isNaN(latB) || isNaN(lonB)) return null;
+  const straight = haversine(curLat, curLon, latB, lonB);
+  // plannedTotal: if startMarker exists compute initial straight distance else null
+  let plannedTotal = null;
+  if(startMarker) plannedTotal = haversine(startMarker.lat, startMarker.lon, latB, lonB);
+  // estimate remaining: prefer (plannedTotal - traveled) if we have a plannedTotal; but avoid negative or too-small values; also prefer straight if it's larger (road bend)
+  if(plannedTotal !== null){
+    const remByPlan = Math.max(0, plannedTotal - traveled);
+    return Math.max(straight, remByPlan);
+  } else {
+    return straight;
+  }
+}
+
+/* compute required average speed to keep overall average <= speed limit
+   logic:
+     total allowed time = plannedTotal / limit (if plannedTotal known)
+     remainingTime = totalAllowedTime - elapsedH
+     required = remainingDistance / remainingTime
+   If plannedTotal isn't known, do a safe calculation using straight-line distance => still useful.
+*/
+function computeRequired(limitKmh, curLat, curLon){
+  if(!limitKmh) return 0;
+  const latB=parseFloat(latBEl.value), lonB=parseFloat(lonBEl.value);
+  if(isNaN(latB) || isNaN(lonB)) return 0;
+  let plannedTotal = null;
+  if(startMarker) plannedTotal = haversine(startMarker.lat, startMarker.lon, latB, lonB);
+  // If we have plannedTotal, use it; else use straight between current and B + traveled as a simple estimate
+  if(plannedTotal !== null){
+    const totalAllowedH = plannedTotal / limitKmh;
+    const elapsedH = startTime ? (Date.now() - startTime)/3600000 : 0;
+    const remainingH = totalAllowedH - elapsedH;
+    const remDist = remainingDistanceToB(curLat, curLon);
+    if(remainingH <= 0) return Infinity;
+    return remDist / remainingH;
+  } else {
+    // fallback: assume you've already traveled 'traveled' and remaining straight distance:
+    const remDist = remainingDistanceToB(curLat, curLon);
+    const avgSoFar = computeAverage();
+    // If avgSoFar already <= limit, required is 0
+    // Otherwise, compute using remaining distance and remaining allowed time by using total distance estimate = traveled + remDist
+    const estTotal = traveled + remDist;
+    const totalAllowedH = estTotal / limitKmh;
+    const elapsedH = startTime ? (Date.now() - startTime)/3600000 : 0;
+    const remainingH = totalAllowedH - elapsedH;
+    if(remainingH <= 0) return Infinity;
+    return remDist / remainingH;
+  }
+}
+
+/* append log row */
+function pushLog(p, speedKmh, smooth){
+  logs.push({
+    ts: new Date().toISOString(),
+    lat: p.coords.latitude,
+    lon: p.coords.longitude,
+    accuracy: p.coords.accuracy,
+    speed: speedKmh,
+    smooth: smooth,
+    traveled_km: traveled
+  });
+}
+
+/* export CSV */
+function exportCSV(){
+  if(logs.length === 0){ alert('No logs to export'); return; }
+  const header = ['ts','lat','lon','accuracy','speed_kmh','smooth_kmh','traveled_km'];
+  const rows = logs.map(r => header.map(h => JSON.stringify(r[h])).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'speedlog.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- Main GPS handler ---------- */
+function handlePosition(p){
+  const lat = p.coords.latitude, lon = p.coords.longitude, acc = p.coords.accuracy || 999;
+  const now = Date.now();
+
+  // Filter by accuracy
+  if(acc > MAX_ACCEPT_ACCURACY){
+    setStatus(`Ignoring low-accuracy fix (${Math.round(acc)} m)`);
+    return;
+  }
+
+  // Auto-mark start/end if enabled
+  const auto = autoToggle.checked;
+  if(auto && startMarker === null){
+    // if close to any manually set start? we only auto when not set
+    // no action here unless user wants auto-mark at current position; leaving as-is (we prefer user marking)
+  }
+  if(auto && startMarker && !tripRunning){
+    // If user has start marked and we are within radius of start and not running, auto-start
+    const dToStartM = haversine(lat, lon, startMarker.lat, startMarker.lon)*1000;
+    if(dToStartM <= AUTO_MARK_RADIUS_M){
+      // automatically start the trip
+      startTrip();
+      setStatus('Auto-started at start marker');
+    }
+  }
+  if(auto && endMarker && tripRunning){
+    const dToEndM = haversine(lat, lon, endMarker.lat, endMarker.lon)*1000;
+    if(dToEndM <= AUTO_MARK_RADIUS_M){
+      stopTrip();
+      setStatus('Auto-ended at end marker');
+    }
+  }
+
+  // time diff check
+  if(lastPos && now - lastPos.ts < MIN_TIME_DIFF_MS){ return; }
+
+  // compute segment distance
+  let segKm = 0;
+  if(lastPos){
+    segKm = haversine(lastPos.lat, lastPos.lon, lat, lon);
+    // compute implied speed over this segment
+    const dtH = (now - lastPos.ts)/3600000;
+    if(dtH <= 0){ segKm = 0; }
+    else {
+      const impliedKmh = segKm / dtH;
+      // clamp unrealistic jumps (likely GPS glitch)
+      if(impliedKmh > MAX_SPEED_JUMP_KMH){
+        // ignore this segment (but keep lastPos updated so we don't repeatedly count same glitch)
+        // do not add traveled
+        lastPos = {lat,lon,ts:now};
+        setStatus(`Ignored jump (implied ${Math.round(impliedKmh)} km/h)`);
+        return;
+      }
+    }
+  }
+
+  // If trip running, accumulate traveled distance
+  if(tripRunning){
+    if(lastPos) traveled += segKm;
+  }
+
+  // compute raw speed: prefer coords.speed if selected and available & sensible
+  let rawSpeedKmh = 0;
+  if(useCoordsSpeed.checked && typeof p.coords.speed === 'number' && p.coords.speed !== null){
+    // coords.speed is in m/s
+    rawSpeedKmh = Math.max(0, p.coords.speed * 3.6);
+  } else {
+    // fallback: compute from seg distance/time
+    if(lastPos){
+      const dtSec = (now - lastPos.ts)/1000;
+      rawSpeedKmh = dtSec > 0 ? (segKm / (dtSec/3600)) : 0;
+    } else {
+      rawSpeedKmh = 0;
+    }
+  }
+
+  // EMA smoothing
+  if(speedEMA === null) speedEMA = rawSpeedKmh;
+  else speedEMA = alpha * rawSpeedKmh + (1 - alpha) * speedEMA;
+
+  // log
+  pushLog(p, rawSpeedKmh, speedEMA);
+
+  // update UI values
+  curEl.textContent = Math.round(rawSpeedKmh);
+  curG.set(rawSpeedKmh,200);
+  const avg = computeAverage();
+  avgEl.textContent = Math.round(avg);
+  avgG.set(avg,200);
+
+  // distance to B
+  const latB = parseFloat(latBEl.value), lonB = parseFloat(lonBEl.value);
+  let distToB = '—';
+  if(!isNaN(latB) && !isNaN(lonB)){
+    distToB = haversine(lat,lon,latB,lonB).toFixed(2);
+    distBEl.textContent = distToB;
+  } else {
+    distBEl.textContent = '—';
+  }
+
+  // required average
+  const limit = parseFloat(limitEl.value) || 0;
+  let req = 0;
+  if(limit > 0 && !isNaN(latB) && !isNaN(lonB)){
+    req = computeRequired(limit, lat, lon);
+    if(!isFinite(req)) req = Number.POSITIVE_INFINITY;
+    reqEl.textContent = req === Number.POSITIVE_INFINITY ? '—' : Math.round(req);
+    reqG.set(isFinite(req) ? req : limit, 200);
+  } else {
+    reqEl.textContent='0'; reqG.set(0,200);
+  }
+
+  // running indicator
+  indicator.style.display = tripRunning ? 'block' : 'none';
+
+  // update lastPos
+  lastPos = {lat,lon,ts:now};
+
+  // if trip not running but user has marked start and auto toggle set, check starting condition (already handled above mostly)
+  setStatus(`Accuracy ${Math.round(acc)} m — traveled ${traveled.toFixed(3)} km`);
+}
+
+/* ---------- Start/Stop + Markers ---------- */
+function startTrip(){
+  if(tripRunning) return;
+  if(!lastPos){
+    alert('Waiting for an initial GPS fix — please wait a few seconds then press Start again.');
+    return;
+  }
+  tripRunning = true;
+  startTime = Date.now();
+  // if startMarker not set, set it to lastPos (user probably pressed Start at start line)
+  if(!startMarker){
+    startMarker = {lat: lastPos.lat, lon: lastPos.lon, ts: new Date().toISOString()};
+  }
+  // if endMarker coords present in inputs but not yet marked, set endMarker from inputs (useful)
+  const latB = parseFloat(latBEl.value), lonB = parseFloat(lonBEl.value);
+  if(isNaN(latB) || isNaN(lonB)){
+    // no B provided — fine, required average will be disabled until set
+  } else if(!endMarker){
+    // keep endMarker null until user marks to avoid accidental auto-end
+  }
+  indicator.style.display='block';
+  setStatus('Trip running');
+  enableWakeLock();
+}
+
+function stopTrip(){
+  if(!tripRunning) return;
+  tripRunning = false;
+  indicator.style.display='none';
+  setStatus('Trip stopped — you can export logs');
+  releaseWakeLock();
+}
+
+markStart.onclick = ()=>{
+  if(!lastPos){
+    alert('Need a GPS fix first — wait a few seconds');
+    return;
+  }
+  startMarker = {lat: lastPos.lat, lon: lastPos.lon, ts: new Date().toISOString()};
+  setStatus('Start marker set');
+};
+
+markEnd.onclick = ()=>{
+  if(!lastPos){
+    alert('Need a GPS fix first — wait a few seconds');
+    return;
+  }
+  endMarker = {lat: lastPos.lat, lon: lastPos.lon, ts: new Date().toISOString()};
+  // fill input fields with this end marker (handy)
+  latBEl.value = endMarker.lat.toFixed(6);
+  lonBEl.value = endMarker.lon.toFixed(6);
+  setStatus('End marker set');
+};
+
+/* ---------- Geolocation start/stop ---------- */
+function initWatch(){
+  if(watchId) navigator.geolocation.clearWatch(watchId);
+  if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
+  watchId = navigator.geolocation.watchPosition(handlePosition, (err)=>{
+    console.error(err);
+    setStatus('GPS error: ' + (err.message || err.code));
+  }, {enableHighAccuracy:true, maximumAge: 500, timeout: 5000});
+}
+
+startBtn.onclick = ()=>{
+  if(!watchId) initWatch();
+  // if we already have a lastPos (from watch) we'll start trip
+  startTrip();
+};
+
+stopBtn.onclick = ()=>{
+  stopTrip();
+};
+
+exportBtn.onclick = ()=> exportCSV();
+
+/* on unload, clear watch & release wake lock */
+window.addEventListener('beforeunload', ()=>{
+  if(watchId) navigator.geolocation.clearWatch(watchId);
+  releaseWakeLock();
+});
+
+/* init */
+resetTripState();
+initWatch();
+
 </script>
 </body>
 </html>
