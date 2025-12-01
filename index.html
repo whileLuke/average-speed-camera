@@ -1,514 +1,312 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>HUD Tracker — iOS Minimal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Route Tracker</title>
 
-<!-- iOS-like minimal light styling -->
 <style>
-:root{
-  --bg:#f7f7f8;
-  --card:#ffffff;
-  --muted:#8a93a1;
-  --accent:#007aff; /* iOS blue */
-  --success:#10b981;
-  --danger:#ff3b30;
-  --glass: rgba(255,255,255,0.7);
-  --shadow: 0 6px 18px rgba(34,35,37,0.08);
-  --radius:16px;
-  --gap:12px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:#0b1220;-webkit-font-smoothing:antialiased;}
-.app{padding:16px;max-width:920px;margin:0 auto;}
+    :root {
+        --bg: #f2f2f7;
+        --card: #ffffff;
+        --accent: #007aff;
+        --text: #1c1c1e;
+        --subtle: #6c6c70;
+        --radius: 18px;
+    }
 
-/* Top header */
-.header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
-.brand{display:flex;gap:10px;align-items:center}
-.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#4cc3ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;box-shadow:var(--shadow)}
-.title{font-size:16px;font-weight:600}
-.subtitle{font-size:12px;color:var(--muted)}
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+        background: var(--bg);
+        color: var(--text);
+    }
 
-/* Controls card */
-.card{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);backdrop-filter: blur(6px);margin-bottom:12px}
-.row{display:flex;gap:8px;align-items:center}
-.col{display:flex;flex-direction:column;gap:8px}
-.inputs{display:flex;gap:8px;flex-wrap:wrap}
-.input{flex:1;min-width:120px}
-.input input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(11,18,32,0.06);background:transparent;font-size:14px}
-.controls-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.btn{padding:10px 12px;border-radius:12px;border:none;background:var(--accent);color:white;font-weight:600;font-size:14px;min-width:86px;text-align:center;touch-action:manipulation}
-.btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(0,122,255,0.12)}
-.small{padding:8px 10px;border-radius:10px;font-size:13px}
-.toggle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+    .container {
+        padding: 16px;
+        max-width: 540px;
+        margin: auto;
+    }
 
-/* HUD display */
-.hud{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
-.tile{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90px}
-.big{font-size:34px;font-weight:800;letter-spacing:-0.5px}
-.label{font-size:12px;color:var(--muted);margin-top:6px}
-.status{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
+    h1 {
+        font-size: 24px;
+        margin-bottom: 12px;
+        font-weight: 600;
+    }
 
-/* Running indicator */
-.indicator{width:12px;height:12px;border-radius:50%}
-.indicator.running{background:var(--success);box-shadow:0 6px 18px rgba(16,185,129,0.12)}
-.indicator.stopped{background:var(--muted);opacity:0.35}
+    .card {
+        background: var(--card);
+        padding: 16px;
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
 
-/* footer */
-.footer{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
+    label {
+        font-size: 14px;
+        color: var(--subtle);
+        display: block;
+        margin-bottom: 4px;
+    }
 
-/* Small screens tweaks */
-@media (max-width:480px){
-  .hud{grid-template-columns:1fr;}
-  .header{gap:8px}
-  .logo{width:40px;height:40px}
-  .brand .title{font-size:15px}
-}
+    input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid #d1d1d6;
+        margin-bottom: 12px;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
 
-/* Accessibility / focus */
-input:focus, button:focus{outline:3px solid rgba(0,122,255,0.12);outline-offset:2px}
+    button {
+        width: 100%;
+        background: var(--accent);
+        color: white;
+        padding: 12px;
+        font-size: 16px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .stat {
+        background: var(--card);
+        padding: 16px;
+        border-radius: var(--radius);
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .stat-value {
+        font-size: 22px;
+        font-weight: 600;
+        margin-top: 6px;
+    }
+
+    /* Gauge */
+    .gauge-card {
+        background: var(--card);
+        padding: 20px;
+        border-radius: var(--radius);
+        margin-top: 20px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.09);
+    }
+
+    .gauge {
+        width: 220px;
+        height: 110px;
+        margin: 0 auto;
+    }
+
+    #needle {
+        transform-origin: 110px 110px;
+        transition: transform 0.25s ease-out;
+    }
+
+    .gauge-value {
+        margin-top: 10px;
+        font-size: 24px;
+        font-weight: 600;
+    }
 </style>
 </head>
+
 <body>
-<div class="app">
-  <div class="header">
-    <div class="brand">
-      <div class="logo">HT</div>
-      <div>
-        <div class="title">HUD Tracker</div>
-        <div class="subtitle">iOS-style • OSRM road distance • mobile-first</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <div id="accText" class="subtitle">Waiting for GPS…</div>
-      <div id="ind" class="indicator stopped" aria-hidden="true"></div>
-    </div>
-  </div>
+<div class="container">
+    <h1>Route Tracker</h1>
 
-  <!-- Controls -->
-  <div class="card" role="region" aria-label="Controls">
-    <div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div class="col" style="flex:1">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Start (manual or GPS)</div>
-        <div class="inputs">
-          <div class="input"><input id="latA" inputmode="decimal" placeholder="Start lat (manual)" /></div>
-          <div class="input"><input id="lonA" inputmode="decimal" placeholder="Start lon (manual)" /></div>
-          <button id="setStartManual" class="small btn ghost" aria-label="Set start from manual">Set</button>
-          <button id="markStart" class="small btn" aria-label="Mark start from GPS">Mark from GPS</button>
+    <div class="card">
+        <label>Destination Latitude</label>
+        <input id="destLat" placeholder="-33.865" />
+
+        <label>Destination Longitude</label>
+        <input id="destLon" placeholder="151.209" />
+
+        <label>Arrival Time</label>
+        <input id="arrival" type="datetime-local" />
+
+        <label>Speed Limit (optional km/h)</label>
+        <input id="speedLimit" placeholder="100" />
+
+        <button id="setStart">Use My Location as Start</button>
+        <button id="setStartManual">Enter Start Manually</button>
+        <button id="begin">Start Tracking</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+            <div>Distance Left</div>
+            <div id="distLeft" class="stat-value">--</div>
         </div>
-      </div>
-
-      <div style="width:16px"></div>
-
-      <div class="col" style="flex:1">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Destination</div>
-        <div class="inputs">
-          <div class="input"><input id="latB" inputmode="decimal" placeholder="Dest lat" /></div>
-          <div class="input"><input id="lonB" inputmode="decimal" placeholder="Dest lon" /></div>
-          <button id="setEndManual" class="small btn ghost" aria-label="Set destination manual">Set</button>
-          <button id="markEnd" class="small btn" aria-label="Mark destination from GPS">Mark from GPS</button>
+        <div class="stat">
+            <div>Distance Travelled</div>
+            <div id="distTrav" class="stat-value">--</div>
         </div>
-      </div>
     </div>
 
-    <hr style="border:none;height:12px;background:transparent">
+    <div class="gauge-card">
+        <div>Required Avg Speed</div>
 
-    <div class="row" style="align-items:center;justify-content:space-between">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input id="limit" inputmode="numeric" placeholder="Speed limit (km/h)" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(11,18,32,0.06);min-width:140px" />
-        <button id="startBtn" class="btn">Start Trip</button>
-        <button id="stopBtn" class="btn ghost">Stop</button>
-        <button id="exportBtn" class="btn ghost">Export CSV</button>
-      </div>
+        <!-- Half-circle SVG gauge -->
+        <svg class="gauge" viewBox="0 0 220 110">
+            <path d="M10 110 A100 100 0 0 1 210 110" fill="#e5e5ea" />
+            <line id="needle"
+                  x1="110" y1="110"
+                  x2="110" y2="20"
+                  stroke="#007aff" stroke-width="6"
+                  stroke-linecap="round" />
+        </svg>
 
-      <div style="display:flex;gap:12px;align-items:center">
-        <label class="toggle"><input id="autoToggle" type="checkbox" /> Auto</label>
-        <label class="toggle"><input id="useCoordsSpeed" type="checkbox" checked /> GPS speed</label>
-        <label class="toggle"><input id="useRoad" type="checkbox" /> Use road (OSRM)</label>
-      </div>
+        <div id="reqSpeed" class="gauge-value">--</div>
     </div>
-  </div>
-
-  <!-- HUD -->
-  <div class="hud" role="status" aria-live="polite">
-    <div class="tile">
-      <div class="big" id="cur">0</div>
-      <div class="label">Current (km/h)</div>
-    </div>
-
-    <div class="tile">
-      <div class="big" id="avg">0</div>
-      <div class="label">Average (km/h)</div>
-    </div>
-
-    <div class="tile">
-      <div class="big" id="req">—</div>
-      <div class="label">Required avg (km/h)</div>
-    </div>
-
-    <div class="tile">
-      <div class="big" id="distB">—</div>
-      <div class="label">Remaining dist (km)</div>
-    </div>
-  </div>
-
-  <div class="status" id="statusText" aria-hidden="false" style="margin-top:10px"></div>
-
-  <div class="footer">Tip: allow location and keep screen awake for best results.</div>
 </div>
 
-<!-- Script (core logic + OSRM) -->
+
 <script>
-/* Minimal iOS-style HUD Tracker with OSRM road-distance + mobile UI */
+/* ------------------------------ Helpers ------------------------------ */
 
-/* ---------- Utilities ---------- */
-function toRad(d){return d*Math.PI/180;}
-function haversine(lat1,lon1,lat2,lon2){
-  const R=6371;
-  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-function nowMs(){return Date.now();}
-function validLat(lat){return typeof lat==='number' && isFinite(lat) && lat>=-90 && lat<=90;}
-function validLon(lon){return typeof lon==='number' && isFinite(lon) && lon>=-180 && lon<=180;}
-function isZeroZero(lat,lon){return lat===0 && lon===0;}
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const toRad = deg => deg * Math.PI / 180;
 
-/* ---------- DOM ---------- */
-const el = id => document.getElementById(id);
-const curEl = el('cur'), avgEl = el('avg'), reqEl = el('req'), distBEl = el('distB');
-const statusText = el('statusText'), accText = el('accText'), ind = el('ind');
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
 
-const latAEl = el('latA'), lonAEl = el('lonA');
-const latBEl = el('latB'), lonBEl = el('lonB');
-const limitEl = el('limit');
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon/2)**2;
 
-const setStartManual = el('setStartManual'), markStart = el('markStart');
-const setEndManual = el('setEndManual'), markEnd = el('markEnd');
-
-const startBtn = el('startBtn'), stopBtn = el('stopBtn'), exportBtn = el('exportBtn');
-const autoToggle = el('autoToggle'), useCoordsSpeed = el('useCoordsSpeed'), useRoad = el('useRoad');
-
-/* ---------- State ---------- */
-let watchId = null;
-let wakelock = null;
-
-let tripRunning = false;
-let startMarker = null; // {lat,lon,ts}
-let endMarker = null;   // {lat,lon,ts}
-let lastPos = null;     // {lat,lon,ts}
-let traveled = 0;       // km
-let startTime = null;   // ms
-let speedEMA = null;
-let logs = [];
-
-const MAX_ACCEPT_ACCURACY = 40;
-const MIN_TIME_DIFF_MS = 400;
-const MAX_SPEED_JUMP_KMH = 60;
-const OSRM_MIN_MOVE_M = 30;
-const OSRM_MIN_INTERVAL_MS = 5000;
-
-let lastOSRMQueryTime = 0;
-let lastOSRMQueryPos = null;
-let plannedRoadTotal_km = null;
-let lastRemainingRoad_km = null;
-
-/* ---------- Helpers ---------- */
-function setStatus(t){ statusText.textContent = t; }
-function setAccText(t){ accText.textContent = t; }
-async function enableWakeLock(){ if('wakeLock' in navigator && !wakelock){ try{ wakelock = await navigator.wakeLock.request('screen'); wakelock.addEventListener('release', ()=> wakelock = null); }catch(e){} } }
-function releaseWakeLock(){ if(wakelock){ wakelock.release().then(()=>wakelock=null).catch(()=>{}); } }
-
-function setIndicator(running){
-  if(running){ ind.classList.remove('stopped'); ind.classList.add('running'); ind.style.display='inline-block'; }
-  else { ind.classList.remove('running'); ind.classList.add('stopped'); ind.style.display='inline-block'; }
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-/* ---------- OSRM interaction ---------- */
-async function osrmRouteDistanceKm(lat1,lon1,lat2,lon2){
-  const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
-  try{
-    const r = await fetch(url, {cache:'no-store'});
-    if(!r.ok) throw new Error('OSRM '+r.status);
-    const j = await r.json();
-    if(j && j.routes && j.routes.length>0 && typeof j.routes[0].distance === 'number'){
-      return j.routes[0].distance / 1000;
+let start = null;
+let dest = null;
+let lastGPS = null;
+let totalTravelled = 0;
+let tracking = false;
+let lastOSRMCall = 0;
+
+
+/* ------------------------------ Start selection ------------------------------ */
+
+document.getElementById("setStart").onclick = () => {
+    navigator.geolocation.getCurrentPosition(pos => {
+        start = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude
+        };
+        alert("Start location set.");
+    });
+};
+
+document.getElementById("setStartManual").onclick = () => {
+    const lat = prompt("Enter start latitude:");
+    const lon = prompt("Enter start longitude:");
+    if (lat && lon) {
+        start = { lat: parseFloat(lat), lon: parseFloat(lon) };
+        alert("Start location set manually.");
     }
-    return null;
-  }catch(e){
-    console.warn('OSRM error', e);
-    return null;
-  }
-}
-function shouldQueryOSRM(now, curLat, curLon){
-  if(!useRoad.checked) return false;
-  if(!parseCoordInputs(latBEl, lonBEl)) return false;
-  if(!lastOSRMQueryPos) return true;
-  const d = haversine(curLat, curLon, lastOSRMQueryPos.lat, lastOSRMQueryPos.lon)*1000;
-  if(d >= OSRM_MIN_MOVE_M) return true;
-  if(now - lastOSRMQueryTime >= OSRM_MIN_INTERVAL_MS) return true;
-  return false;
-}
+};
 
-/* ---------- Parsing inputs ---------- */
-function parseCoordInputs(elLat, elLon){
-  const lat = parseFloat(elLat.value);
-  const lon = parseFloat(elLon.value);
-  if(isNaN(lat) || isNaN(lon)) return null;
-  if(!validLat(lat) || !validLon(lon)) return null;
-  if(isZeroZero(lat,lon)) return null;
-  return {lat, lon};
-}
 
-/* ---------- Logging & CSV ---------- */
-function pushLog(p, raw, smooth, remaining_km, remainingRoad_km){
-  logs.push({
-    ts: new Date().toISOString(),
-    lat: p.coords.latitude, lon: p.coords.longitude,
-    accuracy: p.coords.accuracy,
-    speed_kmh: raw, smooth_kmh: smooth,
-    traveled_km: traveled, remaining_km: remaining_km,
-    remainingRoad_km: remainingRoad_km, plannedRoadTotal_km: plannedRoadTotal_km
-  });
-}
-function exportCSV(){
-  if(logs.length === 0){ alert('No logs'); return; }
-  const header = ['ts','lat','lon','accuracy','speed_kmh','smooth_kmh','traveled_km','remaining_km','remainingRoad_km','plannedRoadTotal_km'];
-  const rows = logs.map(r => header.map(h => JSON.stringify(r[h]||'')).join(','));
-  const csv = [header.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'hudlogs.csv'; a.click();
-  URL.revokeObjectURL(url);
-}
+/* ------------------------------ Main tracking ------------------------------ */
 
-/* ---------- Core calculations ---------- */
-function remainingStraightKm(curLat, curLon){
-  const dest = parseCoordInputs(latBEl, lonBEl);
-  if(!dest) return null;
-  return haversine(curLat, curLon, dest.lat, dest.lon);
-}
+document.getElementById("begin").onclick = () => {
+    const dLat = parseFloat(document.getElementById("destLat").value);
+    const dLon = parseFloat(document.getElementById("destLon").value);
+    const arrival = document.getElementById("arrival").value;
 
-function computeRequiredAvg(limit, curLat, curLon, remaining_km, remainingRoad_km){
-  if(typeof limit !== 'number' || !isFinite(limit) || limit <= 0) return null;
-  if(!parseCoordInputs(latBEl, lonBEl)) return null;
+    if (!start) return alert("Select a start location first.");
+    if (!dLat || !dLon) return alert("Enter destination coordinates.");
+    if (!arrival) return alert("Enter arrival time.");
 
-  const remainingToUse = (useRoad.checked && typeof remainingRoad_km === 'number') ? remainingRoad_km : remaining_km;
-  if(remainingToUse === null) return null;
+    dest = { lat: dLat, lon: dLon };
+    tracking = true;
 
-  let plannedTotal;
-  if(plannedRoadTotal_km !== null && !isNaN(plannedRoadTotal_km)) plannedTotal = plannedRoadTotal_km;
-  else plannedTotal = traveled + (remaining_km || 0);
+    navigator.geolocation.watchPosition(updatePosition, console.error, {
+        enableHighAccuracy: true,
+        maximumAge: 1000
+    });
+};
 
-  const allowedHours = plannedTotal / limit;
-  const elapsedHours = startTime ? (Date.now() - startTime) / 3600000 : 0;
-  const remainingHours = allowedHours - elapsedHours;
 
-  if(remainingHours <= 0) return Infinity;
-  return remainingToUse / remainingHours;
-}
+async function updatePosition(pos) {
+    if (!tracking) return;
 
-/* ---------- GPS handler ---------- */
-async function handlePosition(p){
-  const lat = p.coords.latitude, lon = p.coords.longitude, acc = p.coords.accuracy || 999;
-  const now = nowMs();
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-  // show acc immediately
-  setAccText(`Acc ${Math.round(acc)} m`);
-
-  if(acc > MAX_ACCEPT_ACCURACY){
-    setStatus(`Waiting for better accuracy (${Math.round(acc)} m)`);
-    return;
-  }
-
-  // Auto start/end
-  if(autoToggle.checked && startMarker && !tripRunning){
-    const dstart = haversine(lat,lon,startMarker.lat,startMarker.lon)*1000;
-    if(dstart <= 30){ startTrip(); setStatus('Auto-started at start marker'); }
-  }
-  if(autoToggle.checked && endMarker && tripRunning){
-    const dend = haversine(lat,lon,endMarker.lat,endMarker.lon)*1000;
-    if(dend <= 30){ stopTrip(); setStatus('Auto-ended at destination'); }
-  }
-
-  if(lastPos && now - lastPos.ts < MIN_TIME_DIFF_MS) return;
-
-  // compute segment dist
-  let segKm = 0;
-  if(lastPos){
-    segKm = haversine(lastPos.lat, lastPos.lon, lat, lon);
-    const dtH = (now - lastPos.ts)/3600000;
-    if(dtH>0){
-      const implied = segKm / dtH;
-      if(implied > MAX_SPEED_JUMP_KMH){
-        lastPos = {lat,lon,ts:now};
-        setStatus(`Ignored jump (${Math.round(implied)} km/h)`);
-        return;
-      }
+    if (lastGPS) {
+        totalTravelled += haversine(lastGPS.lat, lastGPS.lon, lat, lon);
     }
-  }
+    lastGPS = { lat, lon };
 
-  if(tripRunning && lastPos) traveled += segKm;
+    const now = Date.now();
+    const arrivalTime = new Date(document.getElementById("arrival").value).getTime();
+    const hoursLeft = (arrivalTime - now) / 3600000;
 
-  // speed (raw)
-  let raw=0;
-  if(useCoordsSpeed.checked && typeof p.coords.speed === 'number' && !isNaN(p.coords.speed) && p.coords.speed !== null){
-    raw = Math.max(0, p.coords.speed * 3.6);
-  } else if(lastPos){
-    const dtSec = (now - lastPos.ts)/1000;
-    raw = dtSec>0 ? (segKm/(dtSec/3600)) : 0;
-  }
+    /* ----------- Distance remaining via OSRM every 10 seconds ----------- */
+    const nowSec = Date.now();
+    let remaining = haversine(lat, lon, dest.lat, dest.lon);
 
-  // smoothing EMA
-  if(speedEMA === null) speedEMA = raw;
-  else speedEMA = 0.35*raw + 0.65*speedEMA;
+    if (nowSec - lastOSRMCall > 10000) {
+        lastOSRMCall = nowSec;
 
-  // remaining straight-line
-  const remaining_km = remainingStraightKm(lat, lon);
+        const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`;
 
-  // OSRM remaining (throttled)
-  let remainingRoad_km = lastRemainingRoad_km;
-  if(useRoad.checked && parseCoordInputs(latBEl, lonBEl) ){
-    if(shouldQueryOSRM(now, lat, lon)){
-      lastOSRMQueryTime = now;
-      lastOSRMQueryPos = {lat,lon};
-      const r = await osrmRouteDistanceKm(lat, lon, parseFloat(latBEl.value), parseFloat(lonBEl.value));
-      if(typeof r === 'number'){ remainingRoad_km = r; lastRemainingRoad_km = r; }
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data && data.routes && data.routes.length > 0) {
+                remaining = data.routes[0].distance; // metres
+            }
+        } catch (e) {
+            console.log("OSRM error, using straight-line fallback.");
+        }
     }
-  }
 
-  // Decide display remaining (road preferred)
-  const displayRemaining = (useRoad.checked && typeof remainingRoad_km === 'number') ? remainingRoad_km : remaining_km;
-  distBEl.textContent = displayRemaining === null ? '—' : displayRemaining.toFixed(2);
+    /* ----------- Required average speed ----------- */
+    let required = "--";
+    if (hoursLeft > 0) {
+        required = (remaining / 1000) / hoursLeft; // km/h
+    }
 
-  // required avg
-  const limitInput = limitEl.value.trim();
-  const limit = limitInput === '' ? null : parseFloat(limitInput);
-  const required = computeRequiredAvg(limit, lat, lon, remaining_km, remainingRoad_km);
-  if(required === null) reqEl.textContent = '—';
-  else if(required === Infinity) reqEl.textContent = '∞';
-  else reqEl.textContent = Math.round(required);
+    /* ----------- Update UI ----------- */
+    document.getElementById("distLeft").textContent = (remaining/1000).toFixed(2) + " km";
+    document.getElementById("distTrav").textContent = (totalTravelled/1000).toFixed(2) + " km";
 
-  // UI update
-  curEl.textContent = Math.round(raw);
-  avgEl.textContent = Math.round(computeAverage());
-
-  // logs
-  pushLog(p, raw, speedEMA, remaining_km, remainingRoad_km);
-
-  setIndicator(tripRunning);
-  lastPos = {lat, lon, ts: now};
-  setStatus(`Acc ${Math.round(acc)} m — traveled ${traveled.toFixed(3)} km ${useRoad.checked ? '(road)' : '(straight)'}`);
+    if (required !== "--") {
+        document.getElementById("reqSpeed").textContent = required.toFixed(1) + " km/h";
+        updateGauge(required);
+    } else {
+        document.getElementById("reqSpeed").textContent = "--";
+    }
 }
 
-/* ---------- Trip controls ---------- */
-function computeAverage(){
-  if(!startTime) return 0;
-  const hours = (nowMs() - startTime)/3600000;
-  return hours>0 ? traveled / hours : 0;
+
+/* ------------------------------ Gauge logic ------------------------------ */
+
+function updateGauge(speed) {
+    const max = 150;
+    const clamped = Math.min(max, Math.max(0, speed));
+    const percent = clamped / max;
+    const angle = -90 + (180 * percent);
+
+    document.getElementById("needle").style.transform = `rotate(${angle}deg)`;
 }
-
-function startTrip(){
-  if(tripRunning) return;
-  if(!lastPos){ alert('Waiting for GPS fix...'); return; }
-  tripRunning = true;
-  startTime = nowMs();
-  if(!startMarker){ startMarker = {lat:lastPos.lat, lon:lastPos.lon, ts:new Date().toISOString()}; latAEl.value = startMarker.lat.toFixed(6); lonAEl.value = startMarker.lon.toFixed(6); }
-  setIndicator(true);
-  setStatus('Trip running — computing planned route if needed...');
-  computePlannedRoadTotalIfNeeded();
-  enableWakeLock();
-}
-
-function stopTrip(){
-  if(!tripRunning) return;
-  tripRunning = false;
-  setIndicator(false);
-  setStatus('Trip stopped — export available');
-  releaseWakeLock();
-}
-
-/* ---------- Markers / manual ---------- */
-setStartManual.addEventListener('click', ()=>{
-  const lat = parseFloat(latAEl.value), lon = parseFloat(lonAEl.value);
-  if(isNaN(lat) || isNaN(lon)){ alert('Enter valid start coords'); return; }
-  if(!validLat(lat) || !validLon(lon)){ alert('Start out of range'); return; }
-  if(isZeroZero(lat,lon)){ alert('Start cannot be 0,0'); return; }
-  startMarker = {lat, lon, ts: new Date().toISOString()};
-  setStatus('Start marker set (manual)');
-  computePlannedRoadTotalIfNeeded();
-});
-markStart.addEventListener('click', ()=>{
-  if(!lastPos){ alert('Need GPS fix to mark start'); return; }
-  startMarker = {lat:lastPos.lat, lon:lastPos.lon, ts:new Date().toISOString()};
-  latAEl.value = startMarker.lat.toFixed(6); lonAEl.value = startMarker.lon.toFixed(6);
-  setStatus('Start marker set (GPS)');
-  computePlannedRoadTotalIfNeeded();
-});
-
-setEndManual.addEventListener('click', ()=>{
-  const lat = parseFloat(latBEl.value), lon = parseFloat(lonBEl.value);
-  if(isNaN(lat) || isNaN(lon)){ alert('Enter valid dest coords'); return; }
-  if(!validLat(lat) || !validLon(lon)){ alert('Dest out of range'); return; }
-  if(isZeroZero(lat,lon)){ alert('Dest cannot be 0,0'); return; }
-  endMarker = {lat, lon, ts: new Date().toISOString()};
-  setStatus('Destination set (manual)');
-  computePlannedRoadTotalIfNeeded();
-});
-markEnd.addEventListener('click', ()=>{
-  if(!lastPos){ alert('Need GPS fix to mark end'); return; }
-  endMarker = {lat:lastPos.lat, lon:lastPos.lon, ts:new Date().toISOString()};
-  latBEl.value = endMarker.lat.toFixed(6); lonBEl.value = endMarker.lon.toFixed(6);
-  setStatus('Destination set (GPS)');
-  computePlannedRoadTotalIfNeeded();
-});
-
-/* compute planned road total (start->dest) if possible */
-async function computePlannedRoadTotalIfNeeded(){
-  const s = startMarker || parseCoordInputs(latAEl, lonAEl);
-  const d = parseCoordInputs(latBEl, lonBEl);
-  if(!d){ plannedRoadTotal_km = null; return; }
-  if(useRoad.checked && s){
-    setStatus('Computing planned route (OSRM)...');
-    const r = await osrmRouteDistanceKm(s.lat, s.lon, d.lat, d.lon);
-    if(typeof r === 'number'){ plannedRoadTotal_km = r; setStatus('Planned route ' + plannedRoadTotal_km.toFixed(2) + ' km'); }
-    else { plannedRoadTotal_km = null; setStatus('OSRM failed — falling back to straight-line estimate'); }
-  } else {
-    plannedRoadTotal_km = null;
-  }
-}
-
-/* ---------- Geolocation init ---------- */
-function initWatch(){
-  if(watchId) navigator.geolocation.clearWatch(watchId);
-  if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
-  watchId = navigator.geolocation.watchPosition(handlePosition, err => { console.error(err); setStatus('GPS error: '+(err.message||err.code)); }, {enableHighAccuracy:true, maximumAge:500, timeout:10000});
-}
-
-/* ---------- UI hooks ---------- */
-startBtn.addEventListener('click', ()=>{ if(!watchId) initWatch(); startTrip(); });
-stopBtn.addEventListener('click', ()=>stopTrip());
-exportBtn.addEventListener('click', ()=>exportCSV());
-useRoad.addEventListener('change', ()=> computePlannedRoadTotalIfNeeded());
-
-window.addEventListener('beforeunload', ()=>{
-  if(watchId) navigator.geolocation.clearWatch(watchId);
-  releaseWakeLock();
-});
-
-/* ---------- Init ---------- */
-function resetAll(){
-  tripRunning=false; startMarker=null; endMarker=null; lastPos=null; traveled=0; startTime=null; speedEMA=null; logs=[];
-  plannedRoadTotal_km=null; lastRemainingRoad_km=null;
-  curEl.textContent='0'; avgEl.textContent='0'; reqEl.textContent='—'; distBEl.textContent='—';
-  setStatus('Stopped');
-  setAccText('Waiting for GPS…'); setIndicator(false);
-}
-resetAll();
-initWatch();
 
 </script>
+
 </body>
 </html>
