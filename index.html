@@ -331,4 +331,199 @@ function setStatus(txt) {
   document.getElementById('status').textContent = txt;
 }
 
-function updateGauge(speed, lim
+function updateGauge(speed, limit) {
+  const max = limit || 150;
+  const clamped = Math.min(max, Math.max(0, speed));
+  const percent = clamped / max;
+  const angle = -90 + (180 * percent);
+  document.getElementById('needle').style.transform = `rotate(${angle}deg)`;
+}
+
+/* ==================== Start Selection ==================== */
+document.getElementById('setStart').onclick = () => {
+  navigator.geolocation.getCurrentPosition(pos => {
+    start = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    setStatus('Start location set');
+  }, err => {
+    setStatus('Error: ' + err.message);
+  }, { enableHighAccuracy: true });
+};
+
+document.getElementById('setStartManual').onclick = () => {
+  const lat = prompt('Enter start latitude:');
+  const lon = prompt('Enter start longitude:');
+  if (lat && lon) {
+    start = { lat: parseFloat(lat), lon: parseFloat(lon) };
+    setStatus('Start set manually');
+  }
+};
+
+/* ==================== Begin Tracking ==================== */
+document.getElementById('begin').onclick = async () => {
+  const dLat = parseFloat(document.getElementById('destLat').value);
+  const dLon = parseFloat(document.getElementById('destLon').value);
+  const limit = parseFloat(document.getElementById('speedLimit').value);
+
+  if (!start) {
+    setStatus('Set start location first');
+    return;
+  }
+  if (!dLat || !dLon) {
+    setStatus('Enter destination coordinates');
+    return;
+  }
+
+  dest = { lat: dLat, lon: dLon };
+  tracking = true;
+  startTime = Date.now();
+  totalTravelled = 0;
+  lastGPS = null;
+
+  // Request wake lock to keep screen on
+  await requestWakeLock();
+
+  setStatus('Starting GPS tracking...');
+
+  watchId = navigator.geolocation.watchPosition(updatePosition, err => {
+    setStatus('GPS error: ' + err.message);
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 10000
+  });
+};
+
+/* ==================== Stop Tracking ==================== */
+document.getElementById('stop').onclick = () => {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  tracking = false;
+  
+  // Release wake lock
+  if (wakeLock !== null) {
+    wakeLock.release();
+    wakeLock = null;
+  }
+  
+  setStatus('Tracking stopped');
+};
+
+/* ==================== GPS Update Loop ==================== */
+async function updatePosition(pos) {
+  if (!tracking) return;
+
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+  const acc = pos.accuracy;
+
+  // Filter poor accuracy
+  if (acc > 50) {
+    setStatus(`Poor accuracy: ${acc.toFixed(0)}m - waiting...`);
+    return;
+  }
+
+  // Calculate distance travelled
+  if (lastGPS) {
+    const seg = haversine(lastGPS.lat, lastGPS.lon, lat, lon);
+    if (seg >= 3) { // Ignore tiny movements (GPS jitter)
+      totalTravelled += seg;
+    }
+  } else {
+    // First fix - set start if not set
+    if (!start) {
+      start = { lat, lon };
+      setStatus('Start auto-set from GPS');
+    }
+  }
+
+  lastGPS = { lat, lon };
+
+  // Current speed
+  const speedMs = pos.coords.speed !== null && pos.coords.speed >= 0 ? pos.coords.speed : 0;
+  const currentKmh = speedMs * 3.6;
+  document.getElementById('curSpeed').textContent = currentKmh.toFixed(1) + ' km/h';
+
+  // Average so far
+  const elapsedHours = (Date.now() - startTime) / 3600000;
+  const avgKmh = elapsedHours > 0 ? (totalTravelled / 1000) / elapsedHours : 0;
+  document.getElementById('avgSpeed').textContent = avgKmh > 0 ? avgKmh.toFixed(1) + ' km/h' : '--';
+
+  // Distance travelled
+  document.getElementById('distTrav').textContent = (totalTravelled / 1000).toFixed(2) + ' km';
+
+  // Distance remaining (try OSRM, fallback to cache or straight-line)
+  let remainingMeters = haversine(lat, lon, dest.lat, dest.lon);
+  
+  const now = Date.now();
+  const cacheKey = getCacheKey(start, dest);
+
+  // Try OSRM every 10 seconds
+  if (now - lastOSRMCall > 10000) {
+    lastOSRMCall = now;
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`;
+      const r = await fetch(url);
+      const data = await r.json();
+      if (data?.routes?.length) {
+        remainingMeters = data.routes[0].distance;
+        // Cache the route distance
+        routeCache[cacheKey] = { distance: remainingMeters, timestamp: now };
+        saveRouteCache();
+      }
+    } catch(e) {
+      console.log('OSRM unavailable, using fallback');
+      // Try cached route
+      if (routeCache[cacheKey]) {
+        const cached = routeCache[cacheKey];
+        // Estimate remaining using cached total - travelled
+        remainingMeters = Math.max(0, cached.distance - totalTravelled);
+      }
+    }
+  } else if (routeCache[cacheKey]) {
+    // Use cached route between OSRM calls
+    remainingMeters = Math.max(0, routeCache[cacheKey].distance - totalTravelled);
+  }
+
+  document.getElementById('distLeft').textContent = (remainingMeters / 1000).toFixed(2) + ' km';
+
+  // Required average speed (capped at speed limit)
+  const speedLimit = parseFloat(document.getElementById('speedLimit').value) || 0;
+  let requiredAvg = 0;
+
+  if (speedLimit > 0 && remainingMeters > 10) {
+    const travelledKm = totalTravelled / 1000;
+    const remainingKm = remainingMeters / 1000;
+    const totalKm = travelledKm + remainingKm;
+    
+    const numerator = (speedLimit * totalKm) - (avgKmh * travelledKm);
+    
+    if (numerator > 0) {
+      requiredAvg = numerator / remainingKm;
+      // NEVER recommend exceeding speed limit
+      requiredAvg = Math.min(requiredAvg, speedLimit);
+    } else {
+      requiredAvg = 0; // Already under limit
+    }
+  }
+
+  document.getElementById('reqSpeed').textContent = requiredAvg > 0 ? requiredAvg.toFixed(1) + ' km/h' : '--';
+  updateGauge(requiredAvg, speedLimit);
+
+  setStatus(`Tracking - accuracy: ${acc.toFixed(0)}m`);
+}
+
+/* ==================== Cleanup ==================== */
+window.addEventListener('beforeunload', () => {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+  }
+  if (wakeLock !== null) {
+    wakeLock.release();
+  }
+});
+</script>
+
+</body>
+</html>
