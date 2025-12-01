@@ -5,188 +5,189 @@
 <title>Route Tracker</title>
 
 <style>
-    :root {
-        --bg: #f2f2f7;
-        --card: #ffffff;
-        --accent: #007aff;
-        --text: #1c1c1e;
-        --subtle: #6c6c70;
-        --radius: 18px;
-    }
+:root {
+  --bg: #000;
+  --card: #111;
+  --accent: #0af;
+  --text: #fff;
+  --subtle: #999;
+  --radius: 18px;
+}
 
-    body {
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
-        background: var(--bg);
-        color: var(--text);
-    }
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+  background: var(--bg);
+  color: var(--text);
+}
 
-    .container {
-        padding: 16px;
-        max-width: 540px;
-        margin: auto;
-    }
+.container {
+  padding: 16px;
+  max-width: 540px;
+  margin: auto;
+}
 
-    h1 {
-        font-size: 24px;
-        margin-bottom: 12px;
-        font-weight: 600;
-    }
+h1 {
+  font-size: 26px;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
 
-    .card {
-        background: var(--card);
-        padding: 16px;
-        border-radius: var(--radius);
-        margin-bottom: 16px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
+.card {
+  background: var(--card);
+  padding: 18px;
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
 
-    label {
-        font-size: 14px;
-        color: var(--subtle);
-        display: block;
-        margin-bottom: 4px;
-    }
+label {
+  font-size: 14px;
+  color: var(--subtle);
+  display: block;
+  margin-bottom: 4px;
+}
 
-    input {
-        width: 100%;
-        padding: 10px;
-        border-radius: 12px;
-        border: 1px solid #d1d1d6;
-        margin-bottom: 12px;
-        font-size: 16px;
-        box-sizing: border-box;
-    }
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  margin-bottom: 14px;
+  font-size: 16px;
+  background: #000;
+  color: #fff;
+  box-sizing: border-box;
+}
 
-    button {
-        width: 100%;
-        background: var(--accent);
-        color: white;
-        padding: 12px;
-        font-size: 16px;
-        border-radius: 12px;
-        border: none;
-        font-weight: 600;
-        margin-top: 4px;
-    }
+button {
+  width: 100%;
+  background: var(--accent);
+  color: white;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  margin-top: 6px;
+}
 
-    .stats {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 12px;
-    }
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
 
-    .stat {
-        background: var(--card);
-        padding: 16px;
-        border-radius: var(--radius);
-        text-align: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
+.stat {
+  background: var(--card);
+  padding: 18px;
+  border-radius: var(--radius);
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
 
-    .stat-value {
-        font-size: 22px;
-        font-weight: 600;
-        margin-top: 6px;
-    }
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 8px;
+}
 
-    /* Gauge */
-    .gauge-card {
-        background: var(--card);
-        padding: 20px;
-        border-radius: var(--radius);
-        margin-top: 20px;
-        text-align: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.09);
-    }
+/* Gauge */
+.gauge-card {
+  background: var(--card);
+  padding: 24px 12px;
+  border-radius: var(--radius);
+  margin-top: 22px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
 
-    .gauge {
-        width: 220px;
-        height: 110px;
-        margin: 0 auto;
-    }
+.gauge {
+  width: 200px;
+  height: 100px;
+  background: #1a1a1a;
+  border-radius: 200px 200px 0 0;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  border: 3px solid #222;
+}
 
-    #needle {
-        transform-origin: 110px 110px;
-        transition: transform 0.25s ease-out;
-    }
+.needle {
+  width: 4px;
+  height: 90px;
+  background: var(--accent);
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform-origin: bottom center;
+  transform: rotate(-90deg);
+  border-radius: 2px;
+  transition: transform 0.25s ease-out;
+}
 
-    .gauge-value {
-        margin-top: 10px;
-        font-size: 24px;
-        font-weight: 600;
-    }
+.gauge-value {
+  margin-top: 14px;
+  font-size: 26px;
+  font-weight: 600;
+}
 </style>
 </head>
 
 <body>
 <div class="container">
-    <h1>Route Tracker</h1>
+<h1>Route Tracker</h1>
 
-    <div class="card">
-        <label>Destination Latitude</label>
-        <input id="destLat" placeholder="-33.865" />
+<div class="card">
+  <label>Destination Latitude</label>
+  <input id="destLat" placeholder="-33.865" />
 
-        <label>Destination Longitude</label>
-        <input id="destLon" placeholder="151.209" />
+  <label>Destination Longitude</label>
+  <input id="destLon" placeholder="151.209" />
 
-        <label>Arrival Time</label>
-        <input id="arrival" type="datetime-local" />
+  <label>Arrival Time</label>
+  <input id="arrival" type="datetime-local" />
 
-        <label>Speed Limit (optional km/h)</label>
-        <input id="speedLimit" placeholder="100" />
+  <label>Speed Limit (optional km/h)</label>
+  <input id="speedLimit" placeholder="100" />
 
-        <button id="setStart">Use My Location as Start</button>
-        <button id="setStartManual">Enter Start Manually</button>
-        <button id="begin">Start Tracking</button>
-    </div>
-
-    <div class="stats">
-        <div class="stat">
-            <div>Distance Left</div>
-            <div id="distLeft" class="stat-value">--</div>
-        </div>
-        <div class="stat">
-            <div>Distance Travelled</div>
-            <div id="distTrav" class="stat-value">--</div>
-        </div>
-    </div>
-
-    <div class="gauge-card">
-        <div>Required Avg Speed</div>
-
-        <!-- Half-circle SVG gauge -->
-        <svg class="gauge" viewBox="0 0 220 110">
-            <path d="M10 110 A100 100 0 0 1 210 110" fill="#e5e5ea" />
-            <line id="needle"
-                  x1="110" y1="110"
-                  x2="110" y2="20"
-                  stroke="#007aff" stroke-width="6"
-                  stroke-linecap="round" />
-        </svg>
-
-        <div id="reqSpeed" class="gauge-value">--</div>
-    </div>
+  <button id="setStart">Use My Location as Start</button>
+  <button id="setStartManual">Enter Start Manually</button>
+  <button id="begin">Start Tracking</button>
 </div>
 
+<div class="stats">
+  <div class="stat">
+    <div>Distance Left</div>
+    <div id="distLeft" class="stat-value">--</div>
+  </div>
+  <div class="stat">
+    <div>Distance Travelled</div>
+    <div id="distTrav" class="stat-value">--</div>
+  </div>
+</div>
+
+<div class="gauge-card">
+  <div>Required Avg Speed</div>
+  <div class="gauge"><div id="needle" class="needle"></div></div>
+  <div id="reqSpeed" class="gauge-value">--</div>
+</div>
+</div>
 
 <script>
-/* ------------------------------ Helpers ------------------------------ */
-
+/* ---------------- Haversine ---------------- */
 function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371e3;
-    const toRad = deg => deg * Math.PI / 180;
-
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-
-    const a = Math.sin(dLat/2)**2 +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLon/2)**2;
-
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  const R = 6371e3;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 let start = null;
@@ -196,116 +197,99 @@ let totalTravelled = 0;
 let tracking = false;
 let lastOSRMCall = 0;
 
-
-/* ------------------------------ Start selection ------------------------------ */
-
+/* ---------------- Start Selection ---------------- */
 document.getElementById("setStart").onclick = () => {
-    navigator.geolocation.getCurrentPosition(pos => {
-        start = {
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude
-        };
-        alert("Start location set.");
-    });
+  navigator.geolocation.getCurrentPosition(pos => {
+    start = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    alert("Start location set.");
+  });
 };
 
 document.getElementById("setStartManual").onclick = () => {
-    const lat = prompt("Enter start latitude:");
-    const lon = prompt("Enter start longitude:");
-    if (lat && lon) {
-        start = { lat: parseFloat(lat), lon: parseFloat(lon) };
-        alert("Start location set manually.");
-    }
+  const lat = prompt("Enter start latitude:");
+  const lon = prompt("Enter start longitude:");
+  if (lat && lon) {
+    start = { lat: parseFloat(lat), lon: parseFloat(lon) };
+    alert("Start set manually.");
+  }
 };
 
-
-/* ------------------------------ Main tracking ------------------------------ */
-
+/* ---------------- Begin Tracking ---------------- */
 document.getElementById("begin").onclick = () => {
-    const dLat = parseFloat(document.getElementById("destLat").value);
-    const dLon = parseFloat(document.getElementById("destLon").value);
-    const arrival = document.getElementById("arrival").value;
+  const dLat = parseFloat(document.getElementById("destLat").value);
+  const dLon = parseFloat(document.getElementById("destLon").value);
+  const arrival = document.getElementById("arrival").value;
 
-    if (!start) return alert("Select a start location first.");
-    if (!dLat || !dLon) return alert("Enter destination coordinates.");
-    if (!arrival) return alert("Enter arrival time.");
+  if (!start) return alert("Set a start location first.");
+  if (!dLat || !dLon) return alert("Enter destination.");
+  if (!arrival) return alert("Enter arrival time.");
 
-    dest = { lat: dLat, lon: dLon };
-    tracking = true;
+  dest = { lat: dLat, lon: dLon };
+  tracking = true;
 
-    navigator.geolocation.watchPosition(updatePosition, console.error, {
-        enableHighAccuracy: true,
-        maximumAge: 1000
-    });
+  navigator.geolocation.watchPosition(updatePosition, console.error, {
+    enableHighAccuracy: true,
+    maximumAge: 1000
+  });
 };
 
-
+/* ---------------- GPS Update Loop ---------------- */
 async function updatePosition(pos) {
-    if (!tracking) return;
+  if (!tracking) return;
 
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
 
-    if (lastGPS) {
-        totalTravelled += haversine(lastGPS.lat, lastGPS.lon, lat, lon);
+  if (lastGPS) totalTravelled += haversine(lastGPS.lat, lastGPS.lon, lat, lon);
+  lastGPS = { lat, lon };
+
+  const now = Date.now();
+  const arrivalTime = new Date(document.getElementById("arrival").value).getTime();
+  const hoursLeft = (arrivalTime - now) / 3600000;
+
+  /* Straight line fallback */
+  let remaining = haversine(lat, lon, dest.lat, dest.lon);
+  const nowSec = Date.now();
+
+  /* OSRM routing every 10 sec */
+  if (nowSec - lastOSRMCall > 10000) {
+    lastOSRMCall = nowSec;
+
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`;
+      const r = await fetch(url);
+      const data = await r.json();
+      if (data?.routes?.length) remaining = data.routes[0].distance;
+    } catch (e) {
+      console.log("OSRM error, using straight-line distance.");
     }
-    lastGPS = { lat, lon };
+  }
 
-    const now = Date.now();
-    const arrivalTime = new Date(document.getElementById("arrival").value).getTime();
-    const hoursLeft = (arrivalTime - now) / 3600000;
+  /* Required speed */
+  let required = "--";
+  if (hoursLeft > 0) required = (remaining / 1000) / hoursLeft;
 
-    /* ----------- Distance remaining via OSRM every 10 seconds ----------- */
-    const nowSec = Date.now();
-    let remaining = haversine(lat, lon, dest.lat, dest.lon);
+  /* UI Updates */
+  document.getElementById("distLeft").textContent = (remaining/1000).toFixed(2) + " km";
+  document.getElementById("distTrav").textContent = (totalTravelled/1000).toFixed(2) + " km";
 
-    if (nowSec - lastOSRMCall > 10000) {
-        lastOSRMCall = nowSec;
-
-        const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`;
-
-        try {
-            const res = await fetch(url);
-            const data = await res.json();
-
-            if (data && data.routes && data.routes.length > 0) {
-                remaining = data.routes[0].distance; // metres
-            }
-        } catch (e) {
-            console.log("OSRM error, using straight-line fallback.");
-        }
-    }
-
-    /* ----------- Required average speed ----------- */
-    let required = "--";
-    if (hoursLeft > 0) {
-        required = (remaining / 1000) / hoursLeft; // km/h
-    }
-
-    /* ----------- Update UI ----------- */
-    document.getElementById("distLeft").textContent = (remaining/1000).toFixed(2) + " km";
-    document.getElementById("distTrav").textContent = (totalTravelled/1000).toFixed(2) + " km";
-
-    if (required !== "--") {
-        document.getElementById("reqSpeed").textContent = required.toFixed(1) + " km/h";
-        updateGauge(required);
-    } else {
-        document.getElementById("reqSpeed").textContent = "--";
-    }
+  if (required !== "--") {
+    document.getElementById("reqSpeed").textContent = required.toFixed(1) + " km/h";
+    updateGauge(required);
+  } else {
+    document.getElementById("reqSpeed").textContent = "--";
+  }
 }
 
-
-/* ------------------------------ Gauge logic ------------------------------ */
-
+/* ---------------- Gauge Logic ---------------- */
 function updateGauge(speed) {
-    const max = 150;
-    const clamped = Math.min(max, Math.max(0, speed));
-    const percent = clamped / max;
-    const angle = -90 + (180 * percent);
+  const max = 150;
+  const clamped = Math.min(max, Math.max(0, speed));
+  const percent = clamped / max;
+  const angle = -90 + (180 * percent);
 
-    document.getElementById("needle").style.transform = `rotate(${angle}deg)`;
+  document.getElementById("needle").style.transform = `rotate(${angle}deg)`;
 }
-
 </script>
 
 </body>
