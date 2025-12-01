@@ -1,8 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Route Tracker</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>Average Speed Tracker</title>
+
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- iOS app icons -->
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 
 <style>
 :root {
@@ -14,18 +26,26 @@
   --radius: 18px;
 }
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .container {
   padding: 16px;
   max-width: 540px;
   margin: auto;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 h1 {
@@ -71,6 +91,12 @@ button {
   border: none;
   font-weight: 600;
   margin-top: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:active {
+  opacity: 0.8;
 }
 
 .stats {
@@ -93,7 +119,6 @@ button {
   margin-top: 8px;
 }
 
-/* Gauge */
 .gauge-card {
   background: var(--card);
   padding: 24px 12px;
@@ -132,165 +157,178 @@ button {
   font-size: 26px;
   font-weight: 600;
 }
+
+.install-prompt {
+  background: var(--accent);
+  color: #000;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 600;
+  display: none;
+}
+
+.install-prompt.show {
+  display: block;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--subtle);
+  text-align: center;
+}
 </style>
 </head>
 
 <body>
+<!-- Install prompt for PWA -->
+<div id="installPrompt" class="install-prompt">
+  <div style="margin-bottom: 8px;">📱 Install this app on your iPhone</div>
+  <div style="font-size: 13px; font-weight: normal;">Tap Share → Add to Home Screen</div>
+</div>
+
 <div class="container">
-<h1>Route Tracker</h1>
+<h1>Average Speed Tracker</h1>
 
 <div class="card">
   <label>Destination Latitude</label>
-  <input id="destLat" placeholder="-33.865" />
+  <input id="destLat" type="number" step="any" placeholder="-33.865" inputmode="decimal" />
 
   <label>Destination Longitude</label>
-  <input id="destLon" placeholder="151.209" />
+  <input id="destLon" type="number" step="any" placeholder="151.209" inputmode="decimal" />
 
-  <label>Arrival Time</label>
-  <input id="arrival" type="datetime-local" />
-
-  <label>Speed Limit (optional km/h)</label>
-  <input id="speedLimit" placeholder="100" />
+  <label>Speed Limit (km/h)</label>
+  <input id="speedLimit" type="number" placeholder="90" inputmode="numeric" />
 
   <button id="setStart">Use My Location as Start</button>
   <button id="setStartManual">Enter Start Manually</button>
   <button id="begin">Start Tracking</button>
+  <button id="stop">Stop Tracking</button>
 </div>
 
 <div class="stats">
   <div class="stat">
-    <div>Distance Left</div>
-    <div id="distLeft" class="stat-value">--</div>
+    <div>Current Speed</div>
+    <div id="curSpeed" class="stat-value">--</div>
   </div>
+  <div class="stat">
+    <div>Average So Far</div>
+    <div id="avgSpeed" class="stat-value">--</div>
+  </div>
+</div>
+
+<div class="stats" style="margin-top: 14px;">
   <div class="stat">
     <div>Distance Travelled</div>
     <div id="distTrav" class="stat-value">--</div>
   </div>
+  <div class="stat">
+    <div>Distance Left</div>
+    <div id="distLeft" class="stat-value">--</div>
+  </div>
 </div>
 
 <div class="gauge-card">
-  <div>Required Avg Speed</div>
+  <div>Required Average Speed</div>
   <div class="gauge"><div id="needle" class="needle"></div></div>
   <div id="reqSpeed" class="gauge-value">--</div>
 </div>
+
+<div class="status" id="status">Ready to track</div>
 </div>
 
 <script>
-/* ---------------- Haversine ---------------- */
+/* ==================== PWA Installation ==================== */
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installPrompt').classList.add('show');
+});
+
+document.getElementById('installPrompt').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installPrompt').classList.remove('show');
+});
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => {
+    console.log('Service Worker registered');
+  }).catch(err => {
+    console.log('Service Worker registration failed:', err);
+  });
+}
+
+// Show install prompt on iOS (manual instructions)
+if (navigator.standalone === false) {
+  // User is on iOS Safari and app is NOT installed
+  document.getElementById('installPrompt').classList.add('show');
+}
+
+/* ==================== Keep Screen Awake ==================== */
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Screen wake lock active');
+    }
+  } catch (err) {
+    console.log('Wake lock error:', err);
+  }
+}
+
+/* ==================== Haversine Distance ==================== */
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
   const toRad = d => d * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(toRad(lat1)) *
-    Math.cos(toRad(lat2)) *
-    Math.sin(dLon/2)**2;
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+/* ==================== State ==================== */
 let start = null;
 let dest = null;
 let lastGPS = null;
 let totalTravelled = 0;
 let tracking = false;
+let watchId = null;
 let lastOSRMCall = 0;
+let startTime = null;
+let routeCache = {};
 
-/* ---------------- Start Selection ---------------- */
-document.getElementById("setStart").onclick = () => {
-  navigator.geolocation.getCurrentPosition(pos => {
-    start = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-    alert("Start location set.");
-  });
-};
+// Load cached routes from localStorage
+try {
+  const cached = localStorage.getItem('routeCache');
+  if (cached) routeCache = JSON.parse(cached);
+} catch(e) {}
 
-document.getElementById("setStartManual").onclick = () => {
-  const lat = prompt("Enter start latitude:");
-  const lon = prompt("Enter start longitude:");
-  if (lat && lon) {
-    start = { lat: parseFloat(lat), lon: parseFloat(lon) };
-    alert("Start set manually.");
-  }
-};
+/* ==================== Route Caching ==================== */
+function getCacheKey(start, dest) {
+  return `${start.lat.toFixed(5)},${start.lon.toFixed(5)}->${dest.lat.toFixed(5)},${dest.lon.toFixed(5)}`;
+}
 
-/* ---------------- Begin Tracking ---------------- */
-document.getElementById("begin").onclick = () => {
-  const dLat = parseFloat(document.getElementById("destLat").value);
-  const dLon = parseFloat(document.getElementById("destLon").value);
-  const arrival = document.getElementById("arrival").value;
-
-  if (!start) return alert("Set a start location first.");
-  if (!dLat || !dLon) return alert("Enter destination.");
-  if (!arrival) return alert("Enter arrival time.");
-
-  dest = { lat: dLat, lon: dLon };
-  tracking = true;
-
-  navigator.geolocation.watchPosition(updatePosition, console.error, {
-    enableHighAccuracy: true,
-    maximumAge: 1000
-  });
-};
-
-/* ---------------- GPS Update Loop ---------------- */
-async function updatePosition(pos) {
-  if (!tracking) return;
-
-  const lat = pos.coords.latitude;
-  const lon = pos.coords.longitude;
-
-  if (lastGPS) totalTravelled += haversine(lastGPS.lat, lastGPS.lon, lat, lon);
-  lastGPS = { lat, lon };
-
-  const now = Date.now();
-  const arrivalTime = new Date(document.getElementById("arrival").value).getTime();
-  const hoursLeft = (arrivalTime - now) / 3600000;
-
-  /* Straight line fallback */
-  let remaining = haversine(lat, lon, dest.lat, dest.lon);
-  const nowSec = Date.now();
-
-  /* OSRM routing every 10 sec */
-  if (nowSec - lastOSRMCall > 10000) {
-    lastOSRMCall = nowSec;
-
-    try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${lon},${lat};${dest.lon},${dest.lat}?overview=false`;
-      const r = await fetch(url);
-      const data = await r.json();
-      if (data?.routes?.length) remaining = data.routes[0].distance;
-    } catch (e) {
-      console.log("OSRM error, using straight-line distance.");
-    }
-  }
-
-  /* Required speed */
-  let required = "--";
-  if (hoursLeft > 0) required = (remaining / 1000) / hoursLeft;
-
-  /* UI Updates */
-  document.getElementById("distLeft").textContent = (remaining/1000).toFixed(2) + " km";
-  document.getElementById("distTrav").textContent = (totalTravelled/1000).toFixed(2) + " km";
-
-  if (required !== "--") {
-    document.getElementById("reqSpeed").textContent = required.toFixed(1) + " km/h";
-    updateGauge(required);
-  } else {
-    document.getElementById("reqSpeed").textContent = "--";
+function saveRouteCache() {
+  try {
+    localStorage.setItem('routeCache', JSON.stringify(routeCache));
+  } catch(e) {
+    console.warn('Failed to save route cache');
   }
 }
 
-/* ---------------- Gauge Logic ---------------- */
-function updateGauge(speed) {
-  const max = 150;
-  const clamped = Math.min(max, Math.max(0, speed));
-  const percent = clamped / max;
-  const angle = -90 + (180 * percent);
-
-  document.getElementById("needle").style.transform = `rotate(${angle}deg)`;
+/* ==================== UI Helpers ==================== */
+function setStatus(txt) {
+  document.getElementById('status').textContent = txt;
 }
-</script>
 
-</body>
-</html>
+function updateGauge(speed, lim
